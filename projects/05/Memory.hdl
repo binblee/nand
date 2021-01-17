@@ -28,4 +28,33 @@ CHIP Memory {
 
     PARTS:
     // Put your code here:
+    // 14 13 12 11 10 09 08 07 06 05 04 03 02 01 00
+    //  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 RAM begin
+    //  0  1  1  1  1  1  1  1  1  1  1  1  1  1  1 RAM end (0x3FFF)
+    //  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0 Screen memory begin (0x4000)
+    //  1  0  1  1  1  1  1  1  1  1  1  1  1  1  1 Screen memory end (0x5FFF)
+    //  1  1  0  0  0  0  0  0  0  0  0  0  0  0  0 Keyboard memory (0x6000)
+    // Short:
+    //  0  0  ...  RAM
+    //  0  1  ...  RAM
+    //  1  0  ...  Screen
+    //  1  1  ...  Keyboard, false (address == 0x6000 for keyboard, 
+    //                              address > 0x6000 always return 0
+
+    DMux4Way(in=load, sel=address[13..14], a=loadRAM0, b=loadRAM1, c=loadScreen, d=na);
+    Or(a=loadRAM0, b=loadRAM1, out=loadRAM);
+    // RAM
+    RAM16K(in=in, load=loadRAM, address=address[0..13], out=ram);
+ 
+    // Screen
+    Screen(in=in, load=loadScreen, address=address[0..12], out=screen);
+ 
+    // Keyboard
+    Or8Way(in=address[0..7], out=addrBits0to7);
+    Or8Way(in[5..7]=false, in[0..4]=address[8..12], out=addrBits8to12);
+    Or(a=addrBits0to7, b=addrBits8to12, out=addrBits0to12);
+    Keyboard(out=keyboard);
+    Mux16(a=keyboard, b=false, sel=addrBits0to12, out=keyboardOrBeyond);
+
+    Mux4Way16(a=ram, b=ram, c=screen, d=keyboardOrBeyond, sel=address[13..14], out=out);
 }
