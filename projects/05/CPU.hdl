@@ -72,15 +72,13 @@ CHIP CPU {
     //  0   0            1 1 
     Not(in=zr, out=notZr);
     Not(in=ng, out=notNg);
-    And(a=notZr, b=notNg, out=notZrNotNg);
-    And(a=notZrNotNg, b=instruction[0],out=j3Jmp);
-    And(a=zr, b=notNg, out=zrNotNg);
-    And(a=zrNotNg, b=instruction[1], out=j2Jmp);
-    And(a=notZr, b=ng, out=notZrNg);
-    And(a=notZrNg, b=instruction[2], out=j1Jmp);
-    Or(a=j3Jmp, b=j2Jmp, out=j2j3);
-    Or(a=j2j3, b=j1Jmp, out=j1j2j3);
-    And(a=j1j2j3, b=instruction[15], out=loadPC);
+    And(a=notZr, b=notNg, out=positive);
+    And(a=positive, b=instruction[0],out=JGT);
+    And(a=zr, b=instruction[1], out=JEQ);
+    And(a=ng, b=instruction[2], out=JLT);
+    Or(a=JGT, b=JEQ, out=JGE);
+    Or(a=JGE, b=JLT, out=JMP);
+    And(a=JMP, b=instruction[15], out=loadPC);
     // PC
     PC(in=aRegister, load=loadPC, inc=true, reset=reset, out[0..14]=pc);
     
