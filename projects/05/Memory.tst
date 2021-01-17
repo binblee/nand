@@ -161,3 +161,5 @@ while out <> 89 {
 
 clear-echo,
 output;
+
+set address 24577, eval, output;
