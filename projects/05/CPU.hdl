@@ -40,4 +40,51 @@ CHIP CPU {
 
     PARTS:
     // Put your code here:
+
+    // b15==0 for a-instruction, 1 for c-instruction
+    Not(in=instruction[15], out=aInstruction);
+    
+    // C-instructions
+    // 15    14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
+    // b15=1  1  1  a c1 c2 c3 c4 c5 c6 d1 d2 d3 j1 j2 j3
+    Mux16(a=aluOut, b=instruction, sel=aInstruction, out=insOut);
+
+    // A Register
+    Or(a=aInstruction, b=instruction[5], out=loadARegister);
+    Register(in=insOut, load=loadARegister, out=aRegister,
+        out[0..14]=addressM);
+
+    // D Register
+    And(a=instruction[15], b=instruction[4], out=loadDRegister);
+    DRegister(in=aluOut, load=loadDRegister, out=dRegister);
+
+    // Memory
+    Mux16(a=aRegister, b=inM, sel=instruction[12], out=aOrInM);
+
+    // ALU
+    ALU(x=dRegister, y=aOrInM, zx=instruction[11], nx=instruction[10],
+            zy=instruction[9], ny=instruction[8], f=instruction[7], 
+            no=instruction[6], out=aluOut, out=outM, zr=zr, ng=ng);
+    // Jump logic
+    // zr  ng  j1  j2  j3  jmp
+    //  0   1   1          1
+    //  1   0       1      1
+    //  0   0            1 1 
+    Not(in=zr, out=notZr);
+    Not(in=ng, out=notNg);
+    And(a=notZr, b=notNg, out=notZrNotNg);
+    And(a=notZrNotNg, b=instruction[0],out=j3Jmp);
+    And(a=zr, b=notNg, out=zrNotNg);
+    And(a=zrNotNg, b=instruction[1], out=j2Jmp);
+    And(a=notZr, b=ng, out=notZrNg);
+    And(a=notZrNg, b=instruction[2], out=j1Jmp);
+    Or(a=j3Jmp, b=j2Jmp, out=j2j3);
+    Or(a=j2j3, b=j1Jmp, out=j1j2j3);
+    And(a=j1j2j3, b=instruction[15], out=loadPC);
+    // PC
+    PC(in=aRegister, load=loadPC, inc=true, reset=reset, out[0..14]=pc);
+    
+    // writeM if b15==1 and a==1 and d3==1
+    And(a=instruction[15], b=instruction[3], out=writeM);
+
 }
