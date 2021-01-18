@@ -162,4 +162,5 @@ while out <> 89 {
 clear-echo,
 output;
 
+// One more test case: access address beyond keyboard(24576), output is undefined.
 set address 24577, eval, output;
