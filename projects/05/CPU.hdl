@@ -51,7 +51,7 @@ CHIP CPU {
 
     // A Register
     Or(a=aInstruction, b=instruction[5], out=loadARegister);
-    Register(in=insOut, load=loadARegister, out=aRegister,
+    ARegister(in=insOut, load=loadARegister, out=aRegister,
         out[0..14]=addressM);
 
     // D Register
