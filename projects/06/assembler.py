@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys
 
-Opscode = {
+OPSCODE = {
     '0': '0101010',
     '1': '0111111',
     '-1' : '0111010',
@@ -32,7 +32,7 @@ Opscode = {
     'D|M': '1010101'
 }
 
-Dstcode = {
+DSTCODE = {
     ''   : '000',
     'M'  : '001',
     'D'  : '010',
@@ -43,7 +43,7 @@ Dstcode = {
     'AMD': '111'
 }
 
-Jmpcode = {
+JMPCODE = {
     ''   : '000',
     'JGT': '001',
     'JEQ': '010',
@@ -54,31 +54,6 @@ Jmpcode = {
     'JMP': '111'
 }
 
-Symbols = {
-    'R0'    : '0',
-    'R1'    : '1',
-    'R2'    : '2',
-    'R3'    : '3',
-    'R4'    : '4',
-    'R5'    : '5',
-    'R6'    : '6',
-    'R7'    : '7',
-    'R8'    : '8',
-    'R9'    : '9',
-    'R10'   : '10',
-    'R11'   : '11',
-    'R12'   : '12',
-    'R13'   : '13',
-    'R14'   : '14',
-    'R15'   : '15',
-    'SCREEN': '16384',
-    'KBD'   : '24576',
-    'SP'    : '0',
-    'LCL'   : '1',
-    'ARG'   : '2',
-    'THIS'  : '3',
-    'THAT'  : '4'
-}
 
 class Instruction:
     def __init__(self, str):
@@ -86,24 +61,22 @@ class Instruction:
         self.dst = ''
         self.opcode = ''
         self.jmp = ''
-        self.c_instruction = False
-        self.set_type()
-        if self.c_instruction:
-            self.parse_c_instruction()
+        self.a_value = ''   # this attribute will be modified later if it is not an integer
+        self.tokenize()
+
+    def tokenize(self):
+        if self.is_c_instruction():
+            self.tokenize_c_instruction()
         else:
-            self.parse_a_instruction()
+            self.tokenize_a_instruction()
 
-    def __str__(self):
-        return self.code()
+    def is_c_instruction(self):
+        return self.src[0] != '@'
+    
+    def is_a_instruction(self):
+        return self.src[0] == '@'
 
-    def set_type(self):
-        if self.src[0] == '@':
-            self.c_instruction = False
-        else:
-            self.c_instruction = True
-
-
-    def parse_c_instruction(self):
+    def tokenize_c_instruction(self):
         idx = self.src.find('=')
         if idx > 0:
             self.dst = self.src[0:idx]
@@ -115,29 +88,48 @@ class Instruction:
             self.jmp = self.opcode[idx+1:]
             self.opcode = self.opcode[0:idx]
 
-    def parse_a_instruction(self):
+    def tokenize_a_instruction(self):
         idx = self.src.find('@')
         if idx == 0:
             self.a_value = self.src[idx+1:]
         else:
             self.a_value = self.src
-    
-    def code(self):
-        if self.c_instruction:
-            return '111' + Opscode[self.opcode] + Dstcode[self.dst] + Jmpcode[self.jmp]
-        else:
-            if self.a_value.isnumeric():
-                return f'{int(self.a_value):016b}'
-            else:
-                return self.a_value
 
 class Parser:
     def __init__(self, source_file, binary_file):
+        self.init_symbols()
         self.source_file = source_file
         self.binary_file = binary_file
         self.instructions = []
         self.lineno = 0
-        self.next_variable = 16
+        self.next_variable_index = 16
+
+    def init_symbols(self):
+        self.symbols = {
+            'R0'    : '0',
+            'R1'    : '1',
+            'R2'    : '2',
+            'R3'    : '3',
+            'R4'    : '4',
+            'R5'    : '5',
+            'R6'    : '6',
+            'R7'    : '7',
+            'R8'    : '8',
+            'R9'    : '9',
+            'R10'   : '10',
+            'R11'   : '11',
+            'R12'   : '12',
+            'R13'   : '13',
+            'R14'   : '14',
+            'R15'   : '15',
+            'SCREEN': '16384',
+            'KBD'   : '24576',
+            'SP'    : '0',
+            'LCL'   : '1',
+            'ARG'   : '2',
+            'THIS'  : '3',
+            'THAT'  : '4'
+        }
 
     def parse(self):
         self.load()
@@ -151,36 +143,56 @@ class Parser:
             for line in lines:
                 line = self.formlize(line)
                 if line != '':
-                    left_parenthesis = line.find('(')
-                    if left_parenthesis >= 0:
-                        # label
-                        right_parenthesis = line.find(')')
-                        if right_parenthesis > 0:
-                            label_name = line[left_parenthesis+1:right_parenthesis]
-                            Symbols[label_name] = str(self.lineno)
-                        else:
-                            # TODO: syntax error
-                            pass
+                    if self.is_label(line):
+                        self.new_label(line)
                     else:
                         self.instructions.append(Instruction(line))
                         self.lineno = self.lineno + 1
+    
+    def is_label(self, line):
+        return line.find('(') >= 0
+
+    def new_label(self, line):
+        left_parenthesis = line.find('(')
+        right_parenthesis = line.find(')')
+        if left_parenthesis >= 0 and right_parenthesis > 0:
+            label_name = line[left_parenthesis+1:right_parenthesis]
+            # last label declaration works
+            self.symbols[label_name] = str(self.lineno)
+        else:
+            # TODO: syntax error
+            pass
+
 
     # 2nd pass
     def map_values(self):
-        for instruction in self.instructions:
-            if not instruction.c_instruction:
-                # a-instruction
-                if not instruction.a_value.isnumeric():
-                    if not instruction.a_value in Symbols:
+        for inst in self.instructions:
+            if inst.is_a_instruction():
+                if not inst.a_value.isnumeric():
+                    # symbol or variable
+                    if not inst.a_value in self.symbols:
                         # add symbol, this should be a variable
-                        Symbols[instruction.a_value] = str(self.next_variable)
-                        self.next_variable = self.next_variable + 1
-                    instruction.a_value = Symbols[instruction.a_value]
+                        self.symbols[inst.a_value] = str(self.next_variable_index)
+                        self.next_variable_index = self.next_variable_index + 1
+                    inst.a_value = self.symbols[inst.a_value]
+    
+    def code(self, inst):
+        code = ''
+        if inst.is_c_instruction():
+            code = '111' + OPSCODE[inst.opcode] + DSTCODE[inst.dst] + JMPCODE[inst.jmp]
+        else:
+            # a-instruction
+            if inst.a_value.isnumeric():
+                code = f'{int(inst.a_value):016b}'
+            else:
+                # should not be here
+                code = inst.a_value
+        return code
 
     def save_binary(self):
         with open(self.binary_file, 'w') as writer:
             for instruction in self.instructions:
-                print(instruction, file=writer)
+                print(self.code(instruction), file=writer)
 
     def formlize(self, str):
         str = str[:str.find('//')]
@@ -196,5 +208,4 @@ if __name__ == '__main__':
             binary_file = source_file.replace('.asm','.hack')
         else:
             binary_file = source_file + ".hack"
-        parser = Parser(source_file,binary_file)
-        parser.parse()
+        Parser(source_file,binary_file).parse()
