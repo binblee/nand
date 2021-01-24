@@ -54,7 +54,7 @@ JMPCODE = {
     'JMP': '111'
 }
 
-
+# TODO: private methods
 class Instruction:
     def __init__(self, str):
         self.src = str
@@ -95,6 +95,7 @@ class Instruction:
         else:
             self.a_value = self.src
 
+# TODO: rename Parser, private methods
 class Parser:
     def __init__(self, source_file, binary_file):
         self.init_symbols()
@@ -194,9 +195,9 @@ class Parser:
             for instruction in self.instructions:
                 print(self.code(instruction), file=writer)
 
-    def formlize(self, str):
-        str = str[:str.find('//')]
-        return str.strip()
+    def formlize(self, text):
+        text = text[:text.find('//')]
+        return text.strip()
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
