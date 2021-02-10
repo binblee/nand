@@ -63,7 +63,6 @@ class Command:
 class Parser:
     def __init__(self, source_file):
         self.source_file = source_file
-        self.filename = os.path.basename(self.source_file)
         self.commands = []
         self.__load(source_file)
 
