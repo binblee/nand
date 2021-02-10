@@ -30,14 +30,14 @@ ASMCODE = {
     'sub': '@SP\nM=M-1\nA=M\nD=M\nA=A-1\nM=M-D',
     'neg': '@SP\nA=M\nA=A-1\nM=-M',
     'eq': ('@SP\nM=M-1\nA=M\nD=M\nA=A-1\nD=M-D\n' 
-           '@L{l1}\nD;JEQ\nD=0\n@L{l2}\n0;JMP\n' 
-           '(L{l1})\nD=-1\n(L{l2})\n@SP\nA=M\nA=A-1\nM=D'),
+           '@{file}_L{l1}\nD;JEQ\nD=0\n@{file}_L{l2}\n0;JMP\n' 
+           '({file}_L{l1})\nD=-1\n({file}_L{l2})\n@SP\nA=M\nA=A-1\nM=D'),
     'gt': ('@SP\nM=M-1\nA=M\nD=M\nA=A-1\nD=M-D\n' 
-           '@L{l1}\nD;JGT\nD=0\n@L{l2}\n0;JMP\n' 
-           '(L{l1})\nD=-1\n(L{l2})\n@SP\nA=M\nA=A-1\nM=D'),
+           '@{file}_L{l1}\nD;JGT\nD=0\n@{file}_L{l2}\n0;JMP\n' 
+           '({file}_L{l1})\nD=-1\n({file}_L{l2})\n@SP\nA=M\nA=A-1\nM=D'),
     'lt': ('@SP\nM=M-1\nA=M\nD=M\nA=A-1\nD=M-D\n' 
-           '@L{l1}\nD;JLT\nD=0\n@L{l2}\n0;JMP\n' 
-           '(L{l1})\nD=-1\n(L{l2})\n@SP\nA=M\nA=A-1\nM=D'),
+           '@{file}_L{l1}\nD;JLT\nD=0\n@{file}_L{l2}\n0;JMP\n' 
+           '({file}_L{l1})\nD=-1\n({file}_L{l2})\n@SP\nA=M\nA=A-1\nM=D'),
     'and': '@SP\nM=M-1\nA=M\nD=M\nA=A-1\nM=D&M',
     'or': '@SP\nM=M-1\nA=M\nD=M\nA=A-1\nM=D|M',
     'not': '@SP\nA=M\nA=A-1\nM=!M'
@@ -63,6 +63,7 @@ class Command:
 class Parser:
     def __init__(self, source_file):
         self.source_file = source_file
+        self.filename = os.path.basename(self.source_file)
         self.commands = []
         self.label_index = 0
         self.load(source_file)
@@ -88,7 +89,7 @@ class Parser:
                     segment_template = SEGMENT_PUSH[command.arg1]
                     if command.arg1 == 'static':
                         code_template = segment_template.format(
-                            file=os.path.basename(self.source_file),
+                            file=self.filename,
                             value=command.arg2
                         ) + code_template
                     else:
@@ -106,7 +107,9 @@ class Parser:
                     code_template = segment_template.format(value=command.arg2) + code_template
             elif command.op in ['eq','gt','lt']:
                 code_template = code_template.format(
-                    l1=self.label_index, l2=self.label_index+1
+                    file=self.filename,
+                    l1=self.label_index,
+                    l2=self.label_index+1
                 )
                 self.label_index = self.label_index + 2
         
