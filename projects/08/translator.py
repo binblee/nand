@@ -40,8 +40,170 @@ ASMCODE = {
            '({file}_L{l1})\nD=-1\n({file}_L{l2})\n@SP\nA=M\nA=A-1\nM=D'),
     'and': '@SP\nM=M-1\nA=M\nD=M\nA=A-1\nM=D&M',
     'or': '@SP\nM=M-1\nA=M\nD=M\nA=A-1\nM=D|M',
-    'not': '@SP\nA=M\nA=A-1\nM=!M'
+    'not': '@SP\nA=M\nA=A-1\nM=!M',
+    'label': '({f}${label})',
+    'goto': '@{f}${label}\n0;JMP',
+    'if-goto': '@SP\nM=M-1\nA=M\nD=M\n@{f}${label}\nD;JNE\n',
+    'call' : ('//call f n\n'
+                '//push return address\n'
+                '@{file}_L{l1}\n'
+                'D=A\n'
+                '@SP\n' 
+                'A=M\n'
+                'M=D\n'
+                '@SP\n'
+                'M=M+1\n'
+                '// push LCL\n'
+                '@LCL\n'
+                'D=M\n'
+                '@SP\n'
+                'A=M\n'
+                'M=D\n'
+                '@SP\n'
+                'M=M+1\n'
+                '// push ARG\n'
+                '@ARG\n'
+                'D=M\n'
+                '@SP\n'
+                'A=M\n'
+                'M=D\n'
+                '@SP\n'
+                'M=M+1\n'
+                '// push THIS\n'
+                '@THIS\n'
+                'D=M\n'
+                '@SP\n'
+                'A=M\n'
+                'M=D\n'
+                '@SP\n'
+                'M=M+1\n'
+                '// push THAT\n'
+                '@THAT\n'
+                'D=M\n'
+                '@SP\n'
+                'A=M\n'
+                'M=D\n'
+                '@SP\n'
+                'M=M+1\n'
+                '// ARG = SP - n - 5\n'
+                '@SP\n'
+                'D=M\n'
+                '//@n\n'
+                '@{n}\n'
+                'D=D-A\n'
+                '@5\n'
+                'D=D-A\n'
+                '@ARG\n'
+                'M=D\n'
+                '// LCL=SP\n'
+                '@SP\n'
+                'D=M\n'
+                '@LCL\n'
+                'M=D\n'
+                '//@f\n'
+                '@{f}\n'
+                '0;JMP\n'
+                '({file}_L{l1})'
+    ),
+    'function' : ('//function f m\n'
+                    '({f})\n'
+                    '@{m}\n'
+                    'D=A\n'
+                    '@{f}.m\n'
+                    'M=D\n'
+                    '({file}_L{l2})\n'
+                    '@{f}.m\n'
+                    'D=M\n'
+                    '@{file}_L{l1}\n'
+                    'D;JEQ\n'
+                    '@SP\n'
+                    'A=M\n'
+                    'M=0\n'
+                    '@SP\n'
+                    'M=M+1\n'
+                    '@{f}.m\n'
+                    'M=M-1\n'
+                    '@{file}_L{l2}\n'
+                    '0;JMP\n'
+                    '({file}_L{l1})\n'
+    ),
+    'return' : ('//frame = LCL\n'
+                '@LCL\n'
+                'D=M\n'
+                '@{f}.frame\n'
+                'M=D\n'
+                '//ret = *(frame-5)\n'
+                '@{f}.frame\n'
+                'D=M\n'
+                '@5\n'
+                'D=D-A\n'
+                'A=D\n'
+                'D=M\n'
+                '@{f}.ret\n'
+                'M=D\n'
+                '// *ARG = pop()\n'
+                '@SP\n'
+                'AM=M-1\n'
+                'D=M\n'
+                '@ARG\n'
+                'A=M\n'
+                'M=D\n'
+                '// SP = ARG+1\n'
+                '@ARG\n'
+                'D=M+1\n'
+                '@SP\n'
+                'M=D\n'
+                '// THAT=*(frame-1)\n'
+                '@{f}.frame\n'
+                'AM=M-1\n'
+                'D=M\n'
+                '@THAT\n'
+                'M=D\n'
+                '// THIS=*(frame-2)\n'
+                '@{f}.frame\n'
+                'AM=M-1\n'
+                'D=M\n'
+                '@THIS\n'
+                'M=D\n'
+                '// ARG=*(frame-3)\n'
+                '@{f}.frame\n'
+                'AM=M-1\n'
+                'D=M\n'
+                '@ARG\n'
+                'M=D\n'
+                '// LCL=*(frame-4)\n'
+                '@{f}.frame\n'
+                'AM=M-1\n'
+                'D=M\n'
+                '@LCL\n'
+                'M=D\n'
+                '// goto return address\n'
+                '@{f}.ret\n'
+                'A=M\n'
+                '0;JMP\n'
+    )
 }
+
+BOOTSTRAP_INIT=(
+        '//bootstrap\n'
+        '//SP=256\n'
+        '@256\n'
+        'D=A\n'
+        '@SP\n'
+        'M=D\n'
+        '@LCL\n'
+        'D=-A\n'
+        'M=D\n'
+        '@ARG\n'
+        'D=-A\n'
+        'M=D\n'
+        '@THIS\n'
+        'D=-A\n'
+        'M=D\n'
+        '@THAT\n'
+        'D=-A\n'
+        'M=D\n'
+)
 
 class Command:
     def __init__(self, string):
@@ -85,12 +247,21 @@ class CodeWriter:
  
     def write_to(self, asm_file):
         with open(asm_file, 'w') as writer:
+            self.__bootstrap(writer)
             for vm_file in self.vm_files:
-                vm_basename = os.path.basename(vm_file)
+                vm_filebasename = os.path.basename(vm_file)
+                current_function = ''
                 for cmd in Parser(vm_file).commands:
-                    print(self.__code(cmd, vm_basename), file=writer)
+                    if cmd.op == 'function':
+                        current_function = cmd.arg1
+                    print(self.__code(cmd, vm_filebasename, current_function), file=writer)
 
-    def __code(self, command, vm_file):
+    def __bootstrap(self, writer):
+        print(BOOTSTRAP_INIT, file=writer)
+        cmd = Command('call Sys.init 0')
+        print(self.__code(cmd, '__bootstrap__', ''), file=writer)
+
+    def __code(self, command, vm_file, current_function):
         code_template = ''
         if command.op in ASMCODE:
             code_template = ASMCODE[command.op]
@@ -122,7 +293,30 @@ class CodeWriter:
                     l2=self.label_index+1
                 )
                 self.label_index = self.label_index + 2
-        
+            elif command.op in ['label', 'goto', 'if-goto']:
+                code_template = code_template.format(f=current_function, label=command.arg1)
+            elif command.op == 'call':
+                code_template = code_template.format(
+                    file=vm_file,
+                    l1=self.label_index,
+                    f=command.arg1,
+                    n=command.arg2
+                )
+                self.label_index = self.label_index + 1
+            elif command.op == 'function':
+                code_template = code_template.format(
+                    file=vm_file,
+                    l1=self.label_index,
+                    l2=self.label_index+1,
+                    f=command.arg1,
+                    m=command.arg2
+                )
+                self.label_index = self.label_index + 2
+            elif command.op == 'return':
+                code_template = code_template.format(
+                    f=current_function
+                )
+
         return f'//{command.cmd}\n{code_template}\n'
 
 
