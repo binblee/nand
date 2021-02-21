@@ -1,0 +1,153 @@
+class Snake{
+    static int screenWidth, screenHeight, gridSize;
+    field int x,y;
+    field int length;
+    field Array body;
+
+    constructor Snake new(){
+        var int i;
+        let screenWidth = 512;
+        let screenHeight = 240; // last 16 rows of pixels used as status bar
+        let gridSize = 16;
+        let length = 6;
+        let i = 0;
+        // x in body[0,2,4], y in body[1,3,5]
+        let body = Array.new(length);
+        while( i < length ){
+            let body[i] = (8 + (i/2) ) * gridSize;
+            let body[i+1] = 8 * gridSize;
+            let i = i + 2;
+        }
+        // x,y always to be head position
+        let x = body[0];
+        let y = body[1];
+        do draw();
+        return this;
+    }
+
+    method void dispose(){
+        do body.dispose();
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    method void move(int direction, boolean inc){
+        var int i;
+        if(direction = 1){
+            // up
+            let y = y - gridSize;
+            if( ~(y > 0) ){
+                let y = 0;
+            }
+        }
+        if(direction = 2){
+            // down
+            let y = y + gridSize;
+            if( ~((y + gridSize) < screenHeight ) ){
+                let y = screenHeight - gridSize;
+            }
+        }
+        if(direction = 3){
+            // left
+            let x = x - gridSize;
+            if( ~(x > 0) ){
+                let x = 0;
+            }
+        }
+        if(direction = 4){
+            // right
+            let x = x + gridSize;
+            if( ~((x + gridSize) < screenWidth) ){
+                let x = screenWidth - gridSize;
+            }
+        }
+        if(inc){
+            do increaseSize();
+            do draw();
+        }
+        // check if snake moved or not
+        if( (~(x=body[0])) | (~(y=body[1])) ){
+            // head position changed
+            do erase();
+            let i = length - 1;
+            while( i > 1 ){
+                let body[i] = body[i-2];
+                let body[i-1] = body[i-3];
+                let i = i-2;
+            }
+            let body[0] = x;
+            let body[1] = y;
+            do draw();
+        }
+        return;
+    }
+
+    method void increaseSize(){
+        var Array newBody;
+        var int newLength;
+        var int i;
+        let newLength = length + 2;
+        let newBody = Array.new(newLength);
+        let i = 0;
+        while( i<length ){
+            let newBody[i+2] = body[i];
+            let i = i + 1;
+        }
+        let newBody[0] = x;
+        let newBody[1] = y;
+        do body.dispose();
+        let length = newLength;
+        let body = newBody;
+        return;
+    }
+
+    method void draw(){
+        var int i;
+        do Screen.setColor(true);
+        let i = 0;
+        while( i< length ){
+            do Screen.drawRectangle(body[i]+1, body[i+1]+1, body[i]+gridSize-2, body[i+1]+gridSize-2);
+            let i = i+2;
+        }
+        return;
+    }
+
+    method void erase(){
+        var int i;
+        do Screen.setColor(false);
+        let i = 0;
+        while( i< length ){
+            do Screen.drawRectangle(body[i]+1, body[i+1]+1, body[i]+gridSize-2, body[i+1]+gridSize-2);
+            let i = i+2;
+        }
+        return;
+    }
+
+    method int getX(){
+        return x;
+    }
+
+    method int getY(){
+        return y;
+    }
+
+    method void printPosition(){
+        var int i;
+        do Output.moveCursor(22,0);
+        do Output.printString("[");
+        do Output.printInt(x);
+        do Output.printString(",");
+        do Output.printInt(y);
+        do Output.printString("]");
+        let i = 0;
+        while ( i<length ){
+            do Output.printString("(");
+            do Output.printInt(body[i]);
+            do Output.printString(",");
+            do Output.printInt(body[i+1]);
+            do Output.printString(")");
+            let i = i + 2;
+        }
+        return;
+    }
+}

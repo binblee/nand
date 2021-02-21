@@ -1,0 +1,67 @@
+class Food{
+    static int screenWidth, screenHeight, gridSize;
+    field int x, y;
+    field int radius;
+    field Array positions;
+    field int position_index, positions_size;
+    
+    constructor Food new(){
+        var int i;
+        let screenWidth = 512;
+        let screenHeight = 256;
+        let gridSize = 16;
+        let positions_size = 6;
+        // x in positions[0,2,4], y in positions[1,3,5]
+        let positions = Array.new(positions_size);
+        let positions[0] = 25;
+        let positions[1] = 5;
+        let positions[2] = 13;
+        let positions[3] = 10;
+        let positions[4] = 7;
+        let positions[5] = 3;
+        let position_index = 0;
+        let x = positions[position_index] * gridSize;
+        let y = positions[position_index+1] * gridSize;
+        let radius = gridSize/2;
+        do draw();
+        return this;
+    }
+
+    method int getX(){
+        return x;
+    }
+
+    method int getY(){
+        return y;
+    }
+
+    method void dispose(){
+        do positions.dispose();
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    method void next(){
+        do erase();
+        let position_index = position_index + 2;
+        if (~(position_index < positions_size)){
+            let position_index = 0;
+        }
+        let x = positions[position_index] * gridSize;
+        let y = positions[position_index+1] * gridSize;
+        do draw();
+        return;
+    }
+
+    method void draw(){
+        do Screen.setColor(true);
+        do Screen.drawCircle(x+radius, y+radius, radius-2);
+        return;
+    }
+
+    method void erase(){
+        do Screen.setColor(false);
+        do Screen.drawCircle(x+radius, y+radius, radius-2);
+        return;
+    }
+}

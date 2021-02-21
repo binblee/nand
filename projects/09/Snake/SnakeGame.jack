@@ -1,0 +1,68 @@
+class SnakeGame {
+    field Snake snake;
+    field Food food;
+    field int score, scoreInc;
+    constructor SnakeGame new(){
+        let snake = Snake.new();
+        let food = Food.new();
+        do drawBackground();
+        let score = 0;
+        let scoreInc = 100;
+        return this;
+    }
+    method void dispose(){
+        do food.dispose();
+        do snake.dispose();
+        do Memory.deAlloc(this);
+        return;
+    }
+    method void run(){
+        var char key;
+        var int direction;
+        var boolean exit;
+        var int snakeX, snakeY;
+        var int foodX, foodY;
+        let exit = false;
+        let direction = 1;
+
+        while (~exit){
+            // let direction = 0;
+            let snakeX = snake.getX();
+            let snakeY = snake.getY();
+            let foodX = food.getX();
+            let foodY = food.getY();
+            if ((snakeX = foodX) & (snakeY = foodY)){
+                do food.next();
+                do snake.move(direction, true);
+                let score = score + scoreInc;
+                do drawScore();
+            }else{
+                let key = Keyboard.keyPressed();
+                if (key = 140){
+                    // ESC to quit game
+                    let exit = true;
+                }
+                if (key = 131) { let direction = 1; }   // up arrow
+                if (key = 133) { let direction = 2; }   // down arrow
+                if (key = 130) { let direction = 3; }   // left arrow
+                if (key = 132) { let direction = 4; }   // right arrow
+                do snake.move(direction, false);
+            }
+            // control game speed
+            do Sys.wait(100);
+        }
+        return;
+    }
+    method void drawBackground(){
+        do Screen.setColor(true);
+        do Screen.drawLine(0, 240, 511, 240);
+        do drawScore();
+        return;
+    }
+    method void drawScore(){
+        do Output.moveCursor(22,0);
+        do Output.printString("score: ");
+        do Output.printInt(score);
+        return;
+    }
+}
