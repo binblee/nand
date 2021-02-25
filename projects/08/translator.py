@@ -237,7 +237,9 @@ class Parser:
                     self.commands.append(Command(formlized_line))
     
     def __formlize(self, text):
-        text = text[:text.find('//')]
+        index = text.find('//')
+        if index >= 0:
+            text = text[:index]
         return text.strip()
 
 class CodeWriter:
