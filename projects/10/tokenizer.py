@@ -189,6 +189,6 @@ if __name__ == '__main__':
         elif os.path.isfile(source_path):
             files.append(source_path)
         else:
-            sys.exit('input file or directory does not exsit.')
+            sys.exit('input file or directory does not exist.')
         for file in files:
             Tokenizer(file).save_xml()
