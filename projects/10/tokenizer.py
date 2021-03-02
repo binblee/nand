@@ -2,29 +2,31 @@ import sys
 import os
 from enum import Enum
 
-class TOKENTYPE(Enum):
-    INVALID        = 0
-    KEYWORD        = 1
-    SYMBOL         = 2
-    INT_CONSTANT   = 3
+
+class TOKEN(Enum):
+    INVALID = 0
+    KEYWORD = 1
+    SYMBOL = 2
+    INT_CONSTANT = 3
     STRING_CONTENT = 4
-    IDENTIFIER     = 5
+    IDENTIFIER = 5
+
 
 class Tokenizer:
     KEYWORDS = ('class', 'constructor', 'function',
-        'method', 'field', 'static', 'var', 'int', 
-        'char', 'boolean', 'void', 'true', 'false',
-        'null', 'this', 'let', 'do', 'if', 'else',
-        'while', 'return')
+                'method', 'field', 'static', 'var', 'int',
+                'char', 'boolean', 'void', 'true', 'false',
+                'null', 'this', 'let', 'do', 'if', 'else',
+                'while', 'return')
     SYMBOLS = ('{', '}', '(', ')', '[', ']', '.',
-        ',', ';', '+', '-', '*', '/', '&',
-        '|', '<', '>', '=', '~')
-    
+               ',', ';', '+', '-', '*', '/', '&',
+               '|', '<', '>', '=', '~')
+
     MARKUPS = {
-        '<':'&lt;',
-        '>':'&gt;',
-        '"':'&quot;',
-        '&':'&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        '&': '&amp;',
     }
 
     def __init__(self, source_filename):
@@ -32,6 +34,7 @@ class Tokenizer:
         self.tokens = []
         self.block_comment = False
         self.index = -1
+        self.token_filename = ''
         self.__load()
 
     def advance(self):
@@ -43,21 +46,21 @@ class Tokenizer:
     def get_token(self):
         return self.tokens[self.index]
 
-    def get_tokentype(self):
+    def get_token_type(self):
         current = self.get_token()
-        token_type = TOKENTYPE.INVALID
+        token_type = TOKEN.INVALID
         if current in self.KEYWORDS:
-            token_type = TOKENTYPE.KEYWORD
+            token_type = TOKEN.KEYWORD
         elif current in self.SYMBOLS:
-            token_type = TOKENTYPE.SYMBOL
+            token_type = TOKEN.SYMBOL
         elif current.isnumeric():
-            token_type = TOKENTYPE.INT_CONSTANT
+            token_type = TOKEN.INT_CONSTANT
         elif current.isidentifier():
-            token_type = TOKENTYPE.IDENTIFIER
+            token_type = TOKEN.IDENTIFIER
         elif len(current) >= 2 and current[0] == '"' and current[-1] == '"':
-            s = current[1:len(current)-1]
+            s = current[1:len(current) - 1]
             if s.find('"') < 0 and s.find('\n') < 0:
-                token_type = TOKENTYPE.STRING_CONTENT
+                token_type = TOKEN.STRING_CONTENT
         return token_type
 
     def get_keyword(self):
@@ -65,7 +68,7 @@ class Tokenizer:
 
     def get_symbol(self):
         return self.get_token()
-    
+
     # only used for xml markup
     def get_symbol_markup(self):
         token = self.get_token()
@@ -76,9 +79,9 @@ class Tokenizer:
     def get_integer_constant(self):
         return self.get_token()
 
-    def get_string_constrant(self):
+    def get_string_constant(self):
         token = self.get_token()
-        return token[1:len(token)-1]
+        return token[1:len(token) - 1]
 
     def get_identifier(self):
         return self.get_token()
@@ -88,14 +91,14 @@ class Tokenizer:
 
     def __load(self):
         with open(self.source_filename, 'r') as reader:
-            for l in reader.readlines():
-                self.tokens += self.__split(l)
+            for line in reader.readlines():
+                self.tokens += self.__split(line)
 
     def __split(self, line):
         result = []
-        tmp = self.__remove_comments(line)
-        if tmp != '':
-            quotes = tmp.split('"')
+        line_without_comments = self.__remove_comments(line)
+        if line_without_comments != '':
+            quotes = line_without_comments.split('"')
             q_index = 0
             while q_index < len(quotes):
                 if q_index % 2 == 0:
@@ -120,13 +123,13 @@ class Tokenizer:
             blk_comment_end = line.find('*/')
             if blk_comment_end > 0:
                 blk_comment_start = line.find('/*')
-                if blk_comment_start >=0 and blk_comment_start < blk_comment_end:
+                if (blk_comment_start >= 0) and (blk_comment_start < blk_comment_end):
                     # syntax error:
                     sys.exit('block comment syntax error')
                 elif blk_comment_start > blk_comment_end:
-                    result_line = line[blk_comment_end+2:blk_comment_start]
+                    result_line = line[blk_comment_end + 2:blk_comment_start]
                 else:
-                    result_line = line[blk_comment_end+2:]
+                    result_line = line[blk_comment_end + 2:]
                 self.block_comment = False
         else:
             blk_comment_start = line.find('/*')
@@ -134,10 +137,10 @@ class Tokenizer:
                 blk_comment_end = line.find('*/')
                 if blk_comment_end > blk_comment_start:
                     # xxx/*yyy*/zzz
-                    result_line = line[0:blk_comment_start] + line[blk_comment_end+2:]
-                elif blk_comment_end >=0 and blk_comment_end < blk_comment_start:
+                    result_line = line[0:blk_comment_start] + line[blk_comment_end + 2:]
+                elif (blk_comment_end >= 0) and (blk_comment_end < blk_comment_start):
                     # xxx*/yyy/*zzz
-                    result_line = line[blk_comment_end+2:blk_comment_start]
+                    result_line = line[blk_comment_end + 2:blk_comment_start]
                 else:
                     result_line = line[0:blk_comment_start]
                     self.block_comment = True
@@ -149,23 +152,23 @@ class Tokenizer:
                     result_line = line
         return result_line
 
-    def saveXML(self):
-        self.token_filename = self.source_filename.replace('.jack','_outT.xml')
+    def save_xml(self):
+        self.token_filename = self.source_filename.replace('.jack', '_outT.xml')
         with open(self.token_filename, 'w') as writer:
             print('<tokens>', file=writer)
             while self.has_more():
                 s = ''
                 self.advance()
-                token_type = self.get_tokentype()
-                if token_type == TOKENTYPE.KEYWORD:
+                token_type = self.get_token_type()
+                if token_type == TOKEN.KEYWORD:
                     s = f'<keyword> {self.get_keyword()} </keyword>'
-                elif token_type == TOKENTYPE.SYMBOL:
+                elif token_type == TOKEN.SYMBOL:
                     s = f'<symbol> {self.get_symbol_markup()} </symbol>'
-                elif token_type == TOKENTYPE.INT_CONSTANT:
+                elif token_type == TOKEN.INT_CONSTANT:
                     s = f'<integerConstant> {self.get_integer_constant()} </integerConstant>'
-                elif token_type == TOKENTYPE.STRING_CONTENT:
-                    s = f'<stringConstant> {self.get_string_constrant()} </stringConstant>'
-                elif token_type == TOKENTYPE.IDENTIFIER:
+                elif token_type == TOKEN.STRING_CONTENT:
+                    s = f'<stringConstant> {self.get_string_constant()} </stringConstant>'
+                elif token_type == TOKEN.IDENTIFIER:
                     s = f'<identifier> {self.get_identifier()} </identifier>'
                 else:
                     s = f'<invalid> {self.get_invalid()} </invalid>'
@@ -188,4 +191,4 @@ if __name__ == '__main__':
         else:
             sys.exit('input file or directory does not exsit.')
         for file in files:
-            Tokenizer(file).saveXML()
+            Tokenizer(file).save_xml()
