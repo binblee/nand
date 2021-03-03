@@ -34,7 +34,6 @@ class Tokenizer:
         self.tokens = []
         self.block_comment = False
         self.index = -1
-        self.token_filename = ''
         self.__load()
 
     def advance(self):
@@ -152,9 +151,8 @@ class Tokenizer:
                     result_line = line
         return result_line
 
-    def save_xml(self):
-        self.token_filename = self.source_filename.replace('.jack', '_outT.xml')
-        with open(self.token_filename, 'w') as writer:
+    def save_xml(self, xml_filename):
+        with open(xml_filename, 'w') as writer:
             print('<tokens>', file=writer)
             while self.has_more():
                 s = ''
@@ -191,4 +189,4 @@ if __name__ == '__main__':
         else:
             sys.exit('input file or directory does not exist.')
         for file in files:
-            Tokenizer(file).save_xml()
+            Tokenizer(file).save_xml(file.replace('.jack', '_outT.xml'))
