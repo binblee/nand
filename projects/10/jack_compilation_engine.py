@@ -357,7 +357,7 @@ class CompilationEngine:
         # varName | varName '[' expression ']' |
         # subroutineCall | '(' expression ')' |
         # unaryOp term
-        # make it one identifier as first step
+        # make it identifier or keywordConstant as first step
         node = self.__expect_identifier()
         if not node:
             node = self.__expect_keyword(('true', 'false', 'null', 'this'))
@@ -369,7 +369,6 @@ class CompilationEngine:
 
     def compile_expression_list(self):
         # (expression (',' expression)* )?
-        # make it expression as first step
         local_root = Node('expressionList')
         node = self.compile_expression()
         if node:
