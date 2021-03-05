@@ -8,7 +8,7 @@ class TokenType(Enum):
     KEYWORD = 1
     SYMBOL = 2
     INT_CONSTANT = 3
-    STRING_CONTENT = 4
+    STRING_CONSTANT = 4
     IDENTIFIER = 5
 
 
@@ -46,7 +46,7 @@ class JackToken:
         elif len(ts) >= 2 and ts[0] == '"' and ts[-1] == '"':
             s = ts[1:len(ts) - 1]
             if s.find('"') < 0 and s.find('\n') < 0:
-                token_type = TokenType.STRING_CONTENT
+                token_type = TokenType.STRING_CONSTANT
         return token_type
 
     def get_type(self):
@@ -97,9 +97,9 @@ class JackTokenizer:
     def has_more(self):
         return len(self.tokens) > 0 and self.index < len(self.tokens) - 1
 
-    def peek_next(self):
+    def peek_next(self, inc=1):
         if self.has_more():
-            return JackToken(self.tokens[self.index+1])
+            return JackToken(self.tokens[self.index+inc])
 
     def __load(self):
         with open(self.source_filename, 'r') as reader:
@@ -177,7 +177,7 @@ class JackTokenizer:
                     s = f'<symbol> {tk.get_symbol_markup()} </symbol>'
                 elif token_type == TokenType.INT_CONSTANT:
                     s = f'<integerConstant> {tk.get_integer_constant()} </integerConstant>'
-                elif token_type == TokenType.STRING_CONTENT:
+                elif token_type == TokenType.STRING_CONSTANT:
                     s = f'<stringConstant> {tk.get_string_constant()} </stringConstant>'
                 elif token_type == TokenType.IDENTIFIER:
                     s = f'<identifier> {tk.get_identifier()} </identifier>'
