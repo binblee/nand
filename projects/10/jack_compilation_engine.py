@@ -40,12 +40,22 @@ class Node:
 
 
 class Leaf:
+    MARKUPS = {
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        '&': '&amp;',
+    }
+
     def __init__(self, typename, value):
         self.typename = typename
         self.value = value
 
     def to_xml(self, indent_num) -> str:
-        s = f'{INDENT * indent_num}<{self.typename}> {self.value} </{self.typename}>\n'
+        markup = self.value
+        if self.value in self.MARKUPS:
+            markup = self.MARKUPS[self.value]
+        s = f'{INDENT * indent_num}<{self.typename}> {markup} </{self.typename}>\n'
         return s
 
 
@@ -79,6 +89,26 @@ class CompilationEngine:
                 if tk_value in symbols:
                     self.tokenizer.advance()
                     return Leaf('symbol', tk_value)
+
+    def __expect_type(self):
+        node = self.__expect_keyword(('int', 'char', 'boolean'))
+        if not node:
+            node = self.__expect_identifier()
+        return node
+
+    def __expect_void_or_type(self):
+        node = self.__expect_keyword('void')
+        if not node:
+            node = self.__expect_type()
+        return node
+
+    def __expect_op(self):
+        # '+'|'-'|'*'|'/'|'&'|'|'|'<'|'>'|'='
+        node = self.__expect_symbol(('+', '-', '*', '/', '&', '|', '<', '>', '='))
+        return node
+
+    def __expect_unary_op(self):
+        return self.__expect_symbol(('-', '~'))
 
     def compile_class(self):
         # class: 'class' className '{' classVarDec* subroutineDec* '}'
@@ -125,23 +155,6 @@ class CompilationEngine:
         # ';'
         local_root.add_child(self.__expect_symbol(';'), 'expect ; in varDec')
         return local_root
-
-    def __expect_type(self):
-        node = self.__expect_keyword(('int', 'char', 'boolean'))
-        if not node:
-            node = self.__expect_identifier()
-        return node
-
-    def __expect_void_or_type(self):
-        node = self.__expect_keyword('void')
-        if not node:
-            node = self.__expect_type()
-        return node
-
-    def __expect_op(self):
-        # '+'|'-'|'*'|'/'|'&'|'|'|'<'|'>'|'='
-        node = self.__expect_symbol(('+', '-', '*', '/', '&', '|', '<', '>', '='))
-        return node
 
     def compile_subroutine(self):
         # ('constructor' | 'function' | 'method')
@@ -249,22 +262,50 @@ class CompilationEngine:
             return None
         local_root = Node('doStatement')
         local_root.add_child(node)
-        # subroutineCall: subroutineName '(' expressionList ')'
-        # | (className | varName) '.' subroutineName '(' expressionList ')'
-        node = self.__expect_identifier()
-        local_root.add_child(node, 'expect subroutineName or className or varName')
-        if not self.tokenizer.has_more():
-            raise_syntax_error('EOF, expect ( or . in do statement')
-        next_token = self.tokenizer.peek_next()
-        if next_token.get_symbol() == '.':
-            local_root.add_child(self.__expect_symbol('.'))
-            local_root.add_child(self.__expect_identifier(), 'expect subroutineName')
-        local_root.add_child(self.__expect_symbol('('), 'expect (')
-        local_root.add_child(self.compile_expression_list(), 'expect expression list in do statement')
-        local_root.add_child(self.__expect_symbol(')'), 'expect ) in do statement')
+        nodes = self.__expect_subroutine_call()
+        if not nodes:
+            raise_syntax_error('missing subroutine call in do statement')
+        for node in nodes:
+            local_root.add_child(node)
         # ;
         local_root.add_child(self.__expect_symbol(';'), 'expect ; in do')
         return local_root
+
+    def __expect_subroutine_call(self):
+        # subroutineCall: subroutineName '(' expressionList ')'
+        # | (className | varName) '.' subroutineName '(' expressionList ')'
+        nodes = []
+        next_token = self.tokenizer.peek_next()
+        if next_token.get_type() == TokenType.IDENTIFIER:
+            next2_token = self.tokenizer.peek_next(2)
+            n2_value = next2_token.get_symbol()
+            if n2_value in ('(', '.'):
+                # ok, this is a subroutine call
+                node = self.__expect_identifier()
+                nodes.append(node)
+                next_token = self.tokenizer.peek_next()
+                if next_token.get_symbol() == '.':
+                    nodes.append(self.__expect_symbol('.'))
+                    nodes.append(self.__expect_identifier())
+                nodes.append(self.__expect_symbol('('))
+                nodes.append(self.compile_expression_list())
+                nodes.append(self.__expect_symbol(')'))
+        return nodes
+
+    def __expect_keyword_constant(self):
+        return self.__expect_keyword(('true', 'false', 'null', 'this'))
+
+    def __expect_integer_constant(self):
+        next_token = self.tokenizer.peek_next()
+        if next_token and next_token.get_type() == TokenType.INT_CONSTANT:
+            self.tokenizer.advance()
+            return Leaf('integerConstant', next_token.get_integer_constant())
+
+    def __expect_string_constant(self):
+        next_token = self.tokenizer.peek_next()
+        if next_token and next_token.get_type() == TokenType.STRING_CONSTANT:
+            self.tokenizer.advance()
+            return Leaf('stringConstant', next_token.get_string_constant())
 
     def compile_let(self):
         # 'let' varName ('[' expression ']')? '=' expression ';'
@@ -357,15 +398,52 @@ class CompilationEngine:
         # varName | varName '[' expression ']' |
         # subroutineCall | '(' expression ')' |
         # unaryOp term
-        # make it identifier or keywordConstant as first step
-        node = self.__expect_identifier()
-        if not node:
-            node = self.__expect_keyword(('true', 'false', 'null', 'this'))
-            if not node:
-                return None
         local_root = Node('term')
-        local_root.add_child(node)
-        return local_root
+
+        # integerConstant | stringConstant | keywordConstant
+        node = or_compile((
+            self.__expect_integer_constant,
+            self.__expect_string_constant,
+            self.__expect_keyword_constant,
+        ))
+        if node:
+            local_root.add_child(node)
+            return local_root
+
+        # subroutineCall
+        nodes = self.__expect_subroutine_call()
+        if len(nodes) > 0:
+            for node in nodes:
+                local_root.add_child(node)
+            return local_root
+
+        next_token = self.tokenizer.peek_next()
+
+        # varName | varName '[' expression ']'
+        if next_token and next_token.get_type() == TokenType.IDENTIFIER:
+            local_root.add_child(self.__expect_identifier())
+            next2 = self.tokenizer.peek_next()
+            if next2 and next2.get_symbol() == '[':
+                local_root.add_child(self.__expect_symbol('['))
+                local_root.add_child(self.compile_expression(), 'expect expression after [ in term')
+                local_root.add_child(self.__expect_symbol(']'), 'expect ] in term')
+            return local_root
+
+        # '(' expression ')'
+        if next_token and next_token.get_symbol() == '(':
+            local_root.add_child(self.__expect_symbol('('))
+            local_root.add_child(self.compile_expression(), 'expect expression after ( in term')
+            local_root.add_child(self.__expect_symbol(')'), 'expect ) in term')
+            return local_root
+
+        # unaryOp term
+        node = self.__expect_unary_op()
+        if node:
+            local_root.add_child(node)
+            local_root.add_child(self.compile_term(), 'expect term after unary op in term')
+            return local_root
+
+        return None
 
     def compile_expression_list(self):
         # (expression (',' expression)* )?
