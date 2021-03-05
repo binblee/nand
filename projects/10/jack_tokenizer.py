@@ -3,7 +3,7 @@ import os
 from enum import Enum
 
 
-class TOKEN(Enum):
+class TokenType(Enum):
     INVALID = 0
     KEYWORD = 1
     SYMBOL = 2
@@ -12,7 +12,7 @@ class TOKEN(Enum):
     IDENTIFIER = 5
 
 
-class Tokenizer:
+class JackToken:
     KEYWORDS = ('class', 'constructor', 'function',
                 'method', 'field', 'static', 'var', 'int',
                 'char', 'boolean', 'void', 'true', 'false',
@@ -21,7 +21,6 @@ class Tokenizer:
     SYMBOLS = ('{', '}', '(', ')', '[', ']', '.',
                ',', ';', '+', '-', '*', '/', '&',
                '|', '<', '>', '=', '~')
-
     MARKUPS = {
         '<': '&lt;',
         '>': '&gt;',
@@ -29,64 +28,78 @@ class Tokenizer:
         '&': '&amp;',
     }
 
+    def __init__(self, token_string):
+        self.token_string = token_string
+        self.token_type = self.__set_type()
+
+    def __set_type(self):
+        ts = self.token_string
+        token_type = TokenType.INVALID
+        if ts in self.KEYWORDS:
+            token_type = TokenType.KEYWORD
+        elif ts in self.SYMBOLS:
+            token_type = TokenType.SYMBOL
+        elif ts.isnumeric():
+            token_type = TokenType.INT_CONSTANT
+        elif ts.isidentifier():
+            token_type = TokenType.IDENTIFIER
+        elif len(ts) >= 2 and ts[0] == '"' and ts[-1] == '"':
+            s = ts[1:len(ts) - 1]
+            if s.find('"') < 0 and s.find('\n') < 0:
+                token_type = TokenType.STRING_CONTENT
+        return token_type
+
+    def get_type(self):
+        return self.token_type
+
+    def get_keyword(self):
+        return self.token_string
+
+    def get_symbol(self):
+        return self.token_string
+
+    # only used for xml markup
+    def get_symbol_markup(self):
+        token_markup = self.token_string
+        if token_markup in self.MARKUPS:
+            token_markup = self.MARKUPS[token_markup]
+        return token_markup
+
+    def get_integer_constant(self):
+        return self.token_string
+
+    def get_string_constant(self):
+        token = self.token_string
+        return token[1:len(token) - 1]
+
+    def get_identifier(self):
+        return self.token_string
+
+    def get_invalid(self):
+        return self.token_string
+
+
+class JackTokenizer:
+
     def __init__(self, source_filename):
         self.source_filename = source_filename
         self.tokens = []
         self.block_comment = False
         self.index = -1
+        self.SYMBOLS = JackToken.SYMBOLS
         self.__load()
 
     def advance(self):
-        self.index += 1
+        if self.has_more():
+            self.index += 1
+            return JackToken(self.tokens[self.index])
 
     def has_more(self):
         return len(self.tokens) > 0 and self.index < len(self.tokens) - 1
 
-    def get_token(self):
-        return self.tokens[self.index]
-
-    def get_token_type(self):
-        current = self.get_token()
-        token_type = TOKEN.INVALID
-        if current in self.KEYWORDS:
-            token_type = TOKEN.KEYWORD
-        elif current in self.SYMBOLS:
-            token_type = TOKEN.SYMBOL
-        elif current.isnumeric():
-            token_type = TOKEN.INT_CONSTANT
-        elif current.isidentifier():
-            token_type = TOKEN.IDENTIFIER
-        elif len(current) >= 2 and current[0] == '"' and current[-1] == '"':
-            s = current[1:len(current) - 1]
-            if s.find('"') < 0 and s.find('\n') < 0:
-                token_type = TOKEN.STRING_CONTENT
-        return token_type
-
-    def get_keyword(self):
-        return self.get_token()
-
-    def get_symbol(self):
-        return self.get_token()
-
-    # only used for xml markup
-    def get_symbol_markup(self):
-        token = self.get_token()
-        if token in self.MARKUPS:
-            token = self.MARKUPS[token]
-        return token
-
-    def get_integer_constant(self):
-        return self.get_token()
-
-    def get_string_constant(self):
-        token = self.get_token()
-        return token[1:len(token) - 1]
-
-    def get_identifier(self):
-        return self.get_token()
-
-    def get_invalid(self):
-        return self.get_token()
+    def peek_next(self):
+        if self.has_more():
+            return JackToken(self.tokens[self.index+1])
 
     def __load(self):
         with open(self.source_filename, 'r') as reader:
@@ -156,20 +169,20 @@ class Tokenizer:
             print('<tokens>', file=writer)
             while self.has_more():
                 s = ''
-                self.advance()
-                token_type = self.get_token_type()
-                if token_type == TOKEN.KEYWORD:
-                    s = f'<keyword> {self.get_keyword()} </keyword>'
-                elif token_type == TOKEN.SYMBOL:
-                    s = f'<symbol> {self.get_symbol_markup()} </symbol>'
-                elif token_type == TOKEN.INT_CONSTANT:
-                    s = f'<integerConstant> {self.get_integer_constant()} </integerConstant>'
-                elif token_type == TOKEN.STRING_CONTENT:
-                    s = f'<stringConstant> {self.get_string_constant()} </stringConstant>'
-                elif token_type == TOKEN.IDENTIFIER:
-                    s = f'<identifier> {self.get_identifier()} </identifier>'
+                tk = self.advance()
+                token_type = tk.get_type()
+                if token_type == TokenType.KEYWORD:
+                    s = f'<keyword> {tk.get_keyword()} </keyword>'
+                elif token_type == TokenType.SYMBOL:
+                    s = f'<symbol> {tk.get_symbol_markup()} </symbol>'
+                elif token_type == TokenType.INT_CONSTANT:
+                    s = f'<integerConstant> {tk.get_integer_constant()} </integerConstant>'
+                elif token_type == TokenType.STRING_CONTENT:
+                    s = f'<stringConstant> {tk.get_string_constant()} </stringConstant>'
+                elif token_type == TokenType.IDENTIFIER:
+                    s = f'<identifier> {tk.get_identifier()} </identifier>'
                 else:
-                    s = f'<invalid> {self.get_invalid()} </invalid>'
+                    s = f'<invalid> {tk.get_invalid()} </invalid>'
                 print(s, file=writer)
             print('</tokens>', file=writer)
 
@@ -189,4 +202,4 @@ if __name__ == '__main__':
         else:
             sys.exit('input file or directory does not exist.')
         for file in files:
-            Tokenizer(file).save_xml(file.replace('.jack', '_outT.xml'))
+            JackTokenizer(file).save_xml(file.replace('.jack', '_outT.xml'))
