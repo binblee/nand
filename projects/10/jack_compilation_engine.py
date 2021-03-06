@@ -120,15 +120,19 @@ class CompilationEngine:
         # '{'
         local_root.add_child(self.__expect_symbol('{'), 'expect {')
         # classVarDec*
-        node = self.compile_class_var_dec()
-        while node:
-            local_root.add_child(node)
+        while True:
             node = self.compile_class_var_dec()
+            if node:
+                local_root.add_child(node)
+            else:
+                break
         # subroutineDec*
-        node = self.compile_subroutine()
-        while node:
-            local_root.add_child(node)
+        while True:
             node = self.compile_subroutine()
+            if node:
+                local_root.add_child(node)
+            else:
+                break
         # '}'
         local_root.add_child(self.__expect_symbol('}'), 'expect } in class')
         return local_root
@@ -147,11 +151,13 @@ class CompilationEngine:
         # varName: identifier
         local_root.add_child(self.__expect_identifier(), 'expect varName')
         # (',' varName)*
-        node = self.__expect_symbol(',')
-        while node:
-            local_root.add_child(node)
-            local_root.add_child(self.__expect_identifier(), 'expect varName after ,')
+        while True:
             node = self.__expect_symbol(',')
+            if node:
+                local_root.add_child(node)
+                local_root.add_child(self.__expect_identifier(), 'expect varName after ,')
+            else:
+                break
         # ';'
         local_root.add_child(self.__expect_symbol(';'), 'expect ; in varDec')
         return local_root
@@ -187,12 +193,14 @@ class CompilationEngine:
         local_root.add_child(node)
         local_root.add_child(self.__expect_identifier(), 'expect varName')
         # (',' type varName) *
-        node = self.__expect_symbol(',')
-        while node:
-            local_root.add_child(node)
-            local_root.add_child(self.__expect_type(), 'expect type')
-            local_root.add_child(self.__expect_identifier(), 'expect identifier')
+        while True:
             node = self.__expect_symbol(',')
+            if node:
+                local_root.add_child(node)
+                local_root.add_child(self.__expect_type(), 'expect type')
+                local_root.add_child(self.__expect_identifier(), 'expect identifier')
+            else:
+                break
         return local_root
 
     def compile_subroutine_body(self):
@@ -205,10 +213,12 @@ class CompilationEngine:
             return None
         local_root.add_child(node)
         # varDesc*
-        var_desc = self.compile_var_dec()
-        while var_desc:
-            local_root.add_child(var_desc, 'syntax error in varDesc')
+        while True:
             var_desc = self.compile_var_dec()
+            if var_desc:
+                local_root.add_child(var_desc, 'syntax error in varDesc')
+            else:
+                break
         # statements
         local_root.add_child(self.compile_statements(), 'expect statements')
         # '}'
@@ -220,15 +230,19 @@ class CompilationEngine:
         node = self.__expect_keyword('var')
         if not node:
             return None
+        # 'var' type varName
         local_node = Node('varDec')
         local_node.add_child(node)
         local_node.add_child(self.__expect_type(), 'expect type in varDec')
         local_node.add_child(self.__expect_identifier(), 'expect identifier in varDec')
-        node = self.__expect_symbol(',')
-        while node:
-            local_node.add_child(node)
-            local_node.add_child(self.__expect_identifier(), 'expect identifier in varDec')
+        # (',' varName)*
+        while True:
             node = self.__expect_symbol(',')
+            if node:
+                local_node.add_child(node)
+                local_node.add_child(self.__expect_identifier(), 'expect identifier in varDec')
+            else:
+                break
         # ;
         local_node.add_child(self.__expect_symbol(';'))
         return local_node
@@ -386,11 +400,13 @@ class CompilationEngine:
             return None
         local_root = Node('expression')
         local_root.add_child(node)
-        node = self.__expect_op()
-        while node:
-            local_root.add_child(node)
-            local_root.add_child(self.compile_term())
+        while True:
             node = self.__expect_op()
+            if node:
+                local_root.add_child(node)
+                local_root.add_child(self.compile_term())
+            else:
+                break
         return local_root
 
     def compile_term(self):
@@ -451,11 +467,14 @@ class CompilationEngine:
         node = self.compile_expression()
         if node:
             local_root.add_child(node)
-            node = self.__expect_symbol(',')
-            while node:
-                local_root.add_child(node)
-                local_root.add_child(self.compile_expression(), 'expect expression in exp list')
+            # (',' expression)*
+            while True:
                 node = self.__expect_symbol(',')
+                if node:
+                    local_root.add_child(node)
+                    local_root.add_child(self.compile_expression(), 'expect expression in exp list')
+                else:
+                    break
         return local_root
 
     def save_xml(self, xml_path):
