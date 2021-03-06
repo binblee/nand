@@ -31,6 +31,14 @@ class Node:
             msg = msg_for_none + '\n' + self.to_xml(0)
             raise_syntax_error(msg)
 
+    def add_many(self, method):
+        while True:
+            node = method()
+            if node:
+                self.add_child(node)
+            else:
+                break
+
     def to_xml(self, indent_num) -> str:
         s = f'{INDENT * indent_num}<{self.typename}>\n'
         for child in self.children:
@@ -120,19 +128,9 @@ class CompilationEngine:
         # '{'
         local_root.add_child(self.__expect_symbol('{'), 'expect {')
         # classVarDec*
-        while True:
-            node = self.compile_class_var_dec()
-            if node:
-                local_root.add_child(node)
-            else:
-                break
+        local_root.add_many(self.compile_class_var_dec)
         # subroutineDec*
-        while True:
-            node = self.compile_subroutine()
-            if node:
-                local_root.add_child(node)
-            else:
-                break
+        local_root.add_many(self.compile_subroutine)
         # '}'
         local_root.add_child(self.__expect_symbol('}'), 'expect } in class')
         return local_root
@@ -213,12 +211,7 @@ class CompilationEngine:
             return None
         local_root.add_child(node)
         # varDesc*
-        while True:
-            var_desc = self.compile_var_dec()
-            if var_desc:
-                local_root.add_child(var_desc, 'syntax error in varDesc')
-            else:
-                break
+        local_root.add_many(self.compile_var_dec)
         # statements
         local_root.add_child(self.compile_statements(), 'expect statements')
         # '}'
@@ -249,24 +242,13 @@ class CompilationEngine:
 
     def compile_statements(self):
         local_root = Node('statements')
-        node = or_compile((
+        local_root.add_many(lambda: or_compile((
             self.compile_do,
             self.compile_let,
             self.compile_while,
             self.compile_return,
             self.compile_if,
-            )
-        )
-        while node:
-            local_root.add_child(node)
-            node = or_compile((
-                self.compile_do,
-                self.compile_let,
-                self.compile_while,
-                self.compile_return,
-                self.compile_if,
-                )
-            )
+        )))
         return local_root
 
     def compile_do(self):
