@@ -15,7 +15,7 @@ def or_compile(methods):
     for method in methods:
         node = method()
         if node:
-            return node
+            break
     return node
 
 
@@ -27,7 +27,7 @@ class Node:
     def add_child(self, child, msg_for_none=''):
         if child:
             self.children.append(child)
-        else:
+        elif msg_for_none:
             msg = msg_for_none + '\n' + self.to_xml(0)
             raise_syntax_error(msg)
 
@@ -74,29 +74,26 @@ class CompilationEngine:
         self.root = self.compile_class()
 
     def __expect_keyword(self, keywords):
-        if self.tokenizer.has_more():
-            next_token = self.tokenizer.peek_next()
-            if next_token.get_type() == TokenType.KEYWORD:
-                tk_value = next_token.get_keyword()
-                if tk_value in keywords:
-                    self.tokenizer.advance()
-                    return Leaf('keyword', tk_value)
+        next_token = self.tokenizer.peek_next()
+        if next_token and next_token.get_type() == TokenType.KEYWORD:
+            tk_value = next_token.get_keyword()
+            if tk_value in keywords:
+                self.tokenizer.advance()
+                return Leaf('keyword', tk_value)
 
     def __expect_identifier(self):
-        if self.tokenizer.has_more():
-            next_token = self.tokenizer.peek_next()
-            if next_token.get_type() == TokenType.IDENTIFIER:
-                self.tokenizer.advance()
-                return Leaf('identifier', next_token.get_identifier())
+        next_token = self.tokenizer.peek_next()
+        if next_token and next_token.get_type() == TokenType.IDENTIFIER:
+            self.tokenizer.advance()
+            return Leaf('identifier', next_token.get_identifier())
 
     def __expect_symbol(self, symbols):
-        if self.tokenizer.has_more():
-            next_token = self.tokenizer.peek_next()
-            if next_token.get_type() == TokenType.SYMBOL:
-                tk_value = next_token.get_symbol()
-                if tk_value in symbols:
-                    self.tokenizer.advance()
-                    return Leaf('symbol', tk_value)
+        next_token = self.tokenizer.peek_next()
+        if next_token and next_token.get_type() == TokenType.SYMBOL:
+            tk_value = next_token.get_symbol()
+            if tk_value in symbols:
+                self.tokenizer.advance()
+                return Leaf('symbol', tk_value)
 
     def __expect_type(self):
         node = self.__expect_keyword(('int', 'char', 'boolean'))
@@ -112,8 +109,7 @@ class CompilationEngine:
 
     def __expect_op(self):
         # '+'|'-'|'*'|'/'|'&'|'|'|'<'|'>'|'='
-        node = self.__expect_symbol(('+', '-', '*', '/', '&', '|', '<', '>', '='))
-        return node
+        return self.__expect_symbol(('+', '-', '*', '/', '&', '|', '<', '>', '='))
 
     def __expect_unary_op(self):
         return self.__expect_symbol(('-', '~'))
@@ -311,10 +307,8 @@ class CompilationEngine:
         local_root = Node('letStatement')
         local_root.add_child(node)
         local_root.add_child(self.__expect_identifier(), 'expect varName in let')
-        if not self.tokenizer.has_more():
-            raise_syntax_error('EOF, but expect more')
         next_token = self.tokenizer.peek_next()
-        if next_token.get_symbol() == '[':
+        if next_token and next_token.get_symbol() == '[':
             local_root.add_child(self.__expect_symbol('['), 'expect [')
             local_root.add_child(self.compile_expression(), 'expect expression in let statement')
             local_root.add_child(self.__expect_symbol(']'), 'expect ]')
@@ -346,10 +340,8 @@ class CompilationEngine:
             return None
         local_root = Node('returnStatement')
         local_root.add_child(node)
-        node = self.compile_expression()
-        if node:
-            local_root.add_child(node)
-        local_root.add_child(self.__expect_symbol(';'))
+        local_root.add_child(self.compile_expression())
+        local_root.add_child(self.__expect_symbol(';') ,'expect ; in return')
         return local_root
 
     def compile_if(self):
@@ -366,13 +358,12 @@ class CompilationEngine:
         local_root.add_child(self.__expect_symbol('{'), 'expect { in if')
         local_root.add_child(self.compile_statements(), 'expect statements in if')
         local_root.add_child(self.__expect_symbol('}'), 'expect } in if')
-        if self.tokenizer.has_more():
-            next_token = self.tokenizer.peek_next()
-            if next_token.get_keyword() == 'else':
-                local_root.add_child(self.__expect_keyword('else'))
-                local_root.add_child(self.__expect_symbol('{'), 'expect { in else')
-                local_root.add_child(self.compile_statements(), 'expect statements in else')
-                local_root.add_child(self.__expect_symbol('}'), 'expect } in else')
+        next_token = self.tokenizer.peek_next()
+        if next_token and next_token.get_keyword() == 'else':
+            local_root.add_child(self.__expect_keyword('else'))
+            local_root.add_child(self.__expect_symbol('{'), 'expect { in else')
+            local_root.add_child(self.compile_statements(), 'expect statements in else')
+            local_root.add_child(self.__expect_symbol('}'), 'expect } in else')
         return local_root
 
     def compile_expression(self):
@@ -386,7 +377,7 @@ class CompilationEngine:
             node = self.__expect_op()
             if node:
                 local_root.add_child(node)
-                local_root.add_child(self.compile_term())
+                local_root.add_child(self.compile_term(), 'expect term after op')
             else:
                 break
         return local_root
