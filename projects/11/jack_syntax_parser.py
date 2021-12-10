@@ -204,35 +204,35 @@ class SyntaxParser:
             return None
         local_root = SyntaxTreeNode('doStatement')
         local_root.add_child(node)
-        nodes = self.__expect_subroutine_call()
-        if not nodes:
+        sub_call = self.compile_subroutine_call()
+        if not sub_call:
             sys.exit('missing subroutine call in do statement')
-        for node in nodes:
-            local_root.add_child(node)
+        local_root.add_child(sub_call)
         # ;
         local_root.add_child(self.__expect_symbol(';'), 'expect ; in do')
         return local_root
 
-    def __expect_subroutine_call(self):
+    def compile_subroutine_call(self) -> SyntaxTreeNode:
         # subroutineCall: subroutineName '(' expressionList ')'
         # | (className | varName) '.' subroutineName '(' expressionList ')'
-        nodes = []
+        local_root = None
         next_token = self.tokenizer.peek_next()
         if next_token.get_type() == TokenType.IDENTIFIER:
             next2_token = self.tokenizer.peek_next(2)
             n2_value = next2_token.get_symbol()
             if n2_value in ('(', '.'):
                 # ok, this is a subroutine call
+                local_root = SyntaxTreeNode('subroutineCall')
                 node = self.__expect_identifier()
-                nodes.append(node)
+                local_root.add_child(node)
                 next_token = self.tokenizer.peek_next()
                 if next_token.get_symbol() == '.':
-                    nodes.append(self.__expect_symbol('.'))
-                    nodes.append(self.__expect_identifier())
-                nodes.append(self.__expect_symbol('('))
-                nodes.append(self.compile_expression_list())
-                nodes.append(self.__expect_symbol(')'))
-        return nodes
+                    local_root.add_child(self.__expect_symbol('.'))
+                    local_root.add_child(self.__expect_identifier())
+                local_root.add_child(self.__expect_symbol('('))
+                local_root.add_child(self.compile_expression_list())
+                local_root.add_child(self.__expect_symbol(')'))
+        return local_root
 
     def __expect_keyword_constant(self):
         return self.__expect_keyword(('true', 'false', 'null', 'this'))
@@ -350,10 +350,9 @@ class SyntaxParser:
             return local_root
 
         # subroutineCall
-        nodes = self.__expect_subroutine_call()
-        if len(nodes) > 0:
-            for node in nodes:
-                local_root.add_child(node)
+        sub_call = self.compile_subroutine_call()
+        if sub_call:
+            local_root.add_child(sub_call)
             return local_root
 
         next_token = self.tokenizer.peek_next()
