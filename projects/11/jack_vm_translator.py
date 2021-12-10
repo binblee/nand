@@ -254,7 +254,6 @@ class VM_Translator:
 
     def __is_op(self, node:SyntaxTreeNode) -> bool:
         op_list = ('+', '-', '*', '/', '&', '|', '<', '>', '=')
-        print(f'{node.value} in {op_list} is {node.value in op_list}')
         return node.typename == 'symbol' and node.value in op_list
 
     def __is_unaryOp(self, node:SyntaxTreeNode) -> bool:
