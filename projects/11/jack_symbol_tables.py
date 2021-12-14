@@ -23,30 +23,40 @@ class SymbolTable:
     def add(self, name, type, kind) -> bool:
         if name in self.entries.keys():
             print(f'duplicate entry requested: {name}')
-            return False
         else:
             index = -1
             if kind == 'var':
                 assert not self.class_scope, 'should not be global'
-                self.var_index = self.var_index + 1
+                self.var_index += 1
                 index = self.var_index
             elif kind == 'argument':
                 assert not self.class_scope, 'should not be global'
-                self.argument_index = self.argument_index + 1
+                self.argument_index += 1
                 index = self.argument_index
             elif kind == 'static':
                 assert self.class_scope, 'should be global scope'
-                self.static_index = self.static_index + 1
+                self.static_index += 1
                 index = self.static_index
+            elif kind == 'field':
+                assert self.class_scope, 'should be global scope'
+                self.field_index += 1
+                index = self.field_index
             entry = SymbolTableEntry(name, type, kind, index)
             self.entries[name] = entry
-            return True
+        return self.entries[name]
 
     def has_entry(self, name) -> bool:
         return name in self.entries.keys()
 
     def get(self, name) -> SymbolTableEntry:
         return self.entries[name]
+
+    def get_field_count(self) -> int:
+        field_count = 0
+        for v in self.entries.values():
+            if v.kind == 'field':
+                field_count += 1
+        return field_count
 
     def var_count(self) -> int:
         var_count = 0
@@ -72,10 +82,10 @@ class ChainedSymbolTable:
             print('close scope')
 
     def add(self, name, type, kind):
-        added = self.tables[-1].add(name, type, kind)
-        if added and self.debug_info:
-            entry = self.tables[-1].get(name)
+        entry = self.tables[-1].add(name, type, kind)
+        if entry and self.debug_info:
             print(f'added: {entry}')
+        return entry
 
     def get(self, name) -> SymbolTableEntry:
         for i in range(len(self.tables) -1, -1, -1):
@@ -85,6 +95,9 @@ class ChainedSymbolTable:
 
     def var_count(self) -> int:
         return self.tables[-1].var_count()
+    
+    def get_field_count(self) -> int:
+        return self.tables[0].get_field_count()
 
 # test only
 if __name__ == '__main__':
