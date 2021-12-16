@@ -259,14 +259,21 @@ class SyntaxParser:
         local_root.add_child(self.__expect_identifier(), 'expect varName in let')
         next_token = self.tokenizer.peek_next()
         if next_token and next_token.get_symbol() == '[':
-            local_root.add_child(self.__expect_symbol('['), 'expect [')
-            local_root.add_child(self.compile_expression(), 'expect expression in let statement')
-            local_root.add_child(self.__expect_symbol(']'), 'expect ]')
+            local_root.add_child(self.compile_array_access())
         local_root.add_child(self.__expect_symbol('='), 'expect = in let')
         local_root.add_child(self.compile_expression(), 'expect expression in let statement')
         # ;
         local_root.add_child(self.__expect_symbol(';'), 'expect ; in let')
         return local_root
+
+    def compile_array_access(self):
+        local_root = SyntaxTreeNode('arrayAccess')
+        local_root.add_child(self.__expect_symbol('['), 'expect [')
+        local_root.add_child(self.compile_expression(), 'expect expression in array access')
+        local_root.add_child(self.__expect_symbol(']'), 'expect ]')
+        return local_root
+
+
 
     def compile_while(self):
         # 'while' '(' expression ')' '{' statements '}'
@@ -356,15 +363,12 @@ class SyntaxParser:
             return local_root
 
         next_token = self.tokenizer.peek_next()
-
         # varName | varName '[' expression ']'
         if next_token and next_token.get_type() == TokenType.IDENTIFIER:
             local_root.add_child(self.__expect_identifier())
             next2 = self.tokenizer.peek_next()
             if next2 and next2.get_symbol() == '[':
-                local_root.add_child(self.__expect_symbol('['))
-                local_root.add_child(self.compile_expression(), 'expect expression after [ in term')
-                local_root.add_child(self.__expect_symbol(']'), 'expect ] in term')
+                local_root.add_child(self.compile_array_access())
             return local_root
 
         # '(' expression ')'

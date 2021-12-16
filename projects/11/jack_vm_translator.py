@@ -214,12 +214,27 @@ class VM_Translator:
         assert node.typename == 'letStatement', 'letStatement'
         var_name = node.children[1].value
         var_dec = self.symbol_tables.get(var_name)
-        var_assignment_code = f'pop {self.__util_get_seg_index(var_dec)}\n'
+        var_assignment_code = ''
+        if node.children[2].typename == 'arrayAccess':
+            var_assignment_code = f'push {self.__util_get_seg_index(var_dec)}\n'
+            var_assignment_code += self.__generate_array_access(node.children[2])
+            var_assignment_code += 'pop that 0\n'
+        else:
+            var_assignment_code = f'pop {self.__util_get_seg_index(var_dec)}\n'
         s = ''
         for child in node.children:
             if child.typename == 'expression':
                 s += self.__generate_expression(child)
         s += var_assignment_code
+        return s
+
+
+    def __generate_array_access(self, node:SyntaxTreeNode) -> str:
+        s = ''
+        for child in node.children:
+            if child.typename == 'expression':
+                s += self.__generate_expression(child)
+        s += 'add\npop pointer 1\n'
         return s
 
     def __util_get_seg_index(self, entry:SymbolTableEntry):
@@ -309,6 +324,10 @@ class VM_Translator:
                     sym = self.symbol_tables.get(identifier)
                     if sym:
                         s += f'push {self.__util_get_seg_index(sym)}\n'
+                        if i < len(node.children)-1 and node.children[i+1].typename == 'arrayAccess':
+                            parsed = i+1
+                            s += self.__generate_array_access(node.children[i+1])
+                            s += 'push that 0\n'
                 elif node.children[i].typename == 'keyword':
                     kw = node.children[i].value
                     if kw == 'true':
@@ -319,8 +338,19 @@ class VM_Translator:
                         s += f'push pointer 0\n'
                     else:
                         assert False, f'keyword unknown: {kw}'
+                elif node.children[i].typename == 'stringConstant':
+                    s += self.__generate_stringConstrant(node.children[i])
             else:
                 parsed = -1
+        return s
+
+    def __generate_stringConstrant(self, node:SyntaxTreeNode) -> str:
+        s = ''
+        assert len(node.value) > 0, 'null string found'
+        string_length = len(node.value)
+        s += f'push constant {string_length}\ncall String.new 1\n'
+        for ch in node.value:
+            s += f'push constant {ord(ch)}\ncall String.appendChar 2\n'
         return s
 
     def __generate_op(self, node:SyntaxTreeNode) -> str:
