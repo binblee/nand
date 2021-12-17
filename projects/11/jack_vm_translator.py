@@ -58,6 +58,8 @@ class VM_Translator:
         tmp_paramlist = ''
         if fn_type == 'method':
             fn_body = 'push argument 0\npop pointer 0\n'
+            # object method param 0 is this pointer, declared param 0 should be 1, etc
+            self.symbol_tables.add('__this_placeholder', 'int', 'argument')
         elif fn_type == 'constructor':
             field_count = self.symbol_tables.get_field_count()
             assert field_count > 0, 'no field in class but require to allocate memory'
@@ -193,7 +195,8 @@ class VM_Translator:
         if node.children[1].value == '(':
             # subroutineName
             sub_name = node.children[0].value
-            fn_to_call = f'push pointer 0\ncall {self.class_name}.{sub_name} {exp_count+1}\n'
+            exp_list = 'push pointer 0\n' + exp_list
+            fn_to_call = f'call {self.class_name}.{sub_name} {exp_count+1}\n'
         elif node.children[1].value == '.':
             # (className | varName) '.' subroutineName
             var_desc = self.symbol_tables.get(node.children[0].value)
@@ -202,7 +205,8 @@ class VM_Translator:
                 class_name = var_desc.type
                 sub_name = node.children[2].value
                 seg_index = self.__util_get_seg_index(var_desc)
-                fn_to_call = f'push {seg_index}\ncall {class_name}.{sub_name} {exp_count+1}\n'
+                exp_list = f'push {seg_index}\n' + exp_list
+                fn_to_call = f'call {class_name}.{sub_name} {exp_count+1}\n'
             else:
                 class_name = node.children[0].value
                 sub_name = node.children[2].value
