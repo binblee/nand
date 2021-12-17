@@ -58,7 +58,7 @@ class SymbolTable:
                 field_count += 1
         return field_count
 
-    def var_count(self) -> int:
+    def get_var_count(self) -> int:
         var_count = 0
         for v in self.entries.values():
             if v.kind == 'var':
@@ -93,8 +93,8 @@ class ChainedSymbolTable:
                 return self.tables[i].get(name)
         return None
 
-    def var_count(self) -> int:
-        return self.tables[-1].var_count()
+    def get_var_count(self) -> int:
+        return self.tables[-1].get_var_count()
     
     def get_field_count(self) -> int:
         return self.tables[0].get_field_count()
@@ -110,7 +110,7 @@ if __name__ == '__main__':
     print(st.get('__tmp_do_return'))
     print(st.get('another_var'))
     print(st.get('static_var1'))
-    print(st.var_count())
+    print(st.get_var_count())
     st.close_scope()
     print(st.get('__tmp_do_return'))
     print(st.get('static_var1'))

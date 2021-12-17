@@ -69,7 +69,7 @@ class VM_Translator:
                 tmp_paramlist += self.__generate_parameterList(child)
             elif child.typename == 'subroutineBody':
                 fn_body += self.__generate_subroutineBody(child)
-        fn_local_num = self.symbol_tables.var_count()
+        fn_local_num = self.symbol_tables.get_var_count()
         fn_dec = f'function {self.class_name}.{fn_name} {fn_local_num}\n'
         self.symbol_tables.close_scope()
         return f'{fn_dec}{tmp_paramlist}{fn_body}'
