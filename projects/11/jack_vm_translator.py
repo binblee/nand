@@ -336,7 +336,7 @@ class VM_Translator:
                     kw = node.children[i].value
                     if kw == 'true':
                         s += f'push constant 1\nneg\n'
-                    elif kw == 'false':
+                    elif kw in ('false', 'null'):
                         s += f'push constant 0\n'
                     elif kw == 'this':
                         s += f'push pointer 0\n'
