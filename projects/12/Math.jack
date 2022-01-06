@@ -9,12 +9,28 @@
  */
 class Math {
 
+    static Array bitmask;
+
     /** Initializes the library. */
     function void init() {
+        var int m,index;
+        let bitmask = Array.new(16);
+        let m=1;
+        let index = 0;
+        while( index < 16 ){
+            let bitmask[index] = m;
+            let m = m + m;
+            let index = index + 1;
+        }
+        return;
     }
 
     /** Returns the absolute value of x. */
     function int abs(int x) {
+        if( x > 0){
+            return x;
+        }
+        return (0 - x) ;
     }
 
     /** Returns the product of x and y. 
@@ -23,6 +39,36 @@ class Math {
      *  the Jack expressions x*y and multiply(x,y) return the same value.
      */
     function int multiply(int x, int y) {
+        /*
+        two's compliment
+        */
+        /*
+        sum = 0
+        shiftedX = x
+        for i=0 ... w -1 do
+            if i'th bit of y == 1
+                sum = sum + shiftedX
+            shiftedX = shiftedX * 2
+        */
+        var int sum, shiftedX, i;
+        let sum = 0;
+        let shiftedX = x;
+        let i = 0;
+        while(i < 16){
+            if (Math.ithbit(y, i)){
+                let sum = sum + shiftedX;
+            }
+            let shiftedX = shiftedX + shiftedX;
+            let i = i + 1;
+        }
+        return sum;
+    }
+
+    function int ithbit(int number, int i){
+        if( (i > -1) & (i < 16) ){
+            return (number & bitmask[i]);
+        }
+        return 0;
     }
 
     /** Returns the integer part of x/y.
@@ -31,17 +77,90 @@ class Math {
      *  the Jack expressions x/y and divide(x,y) return the same value.
      */
     function int divide(int x, int y) {
+        var int result;
+        let result = Math.unsigned_divide(Math.abs(x), Math.abs(y));
+        if ( ((x < 0) & (y < 0)) | ((x > 0) & (y > 0)) ){
+            return result;
+        }
+        return (0 - result);
+    }
+    function int unsigned_divide(int x, int y) {
+        /*
+        // Integer part of x/y, where x >= 0 and y > 0 
+        if y>x return 0
+        q = divide(x, 2*y)
+        if (x - 2 * q * y) < y
+            return 2 * q
+        return 2 * q + 1
+        */
+        var int q;
+        if ( (y > x) | (y < 0) ){
+            return 0;
+        }
+        let q = Math.unsigned_divide(x,  2 * y);
+        if ((x - (2 * q * y)) < y){
+            return (2 * q);
+        }
+        return (2 * q + 1);
     }
 
     /** Returns the integer part of the square root of x. */
     function int sqrt(int x) {
+        /*
+        // Compute the integer part of y = sqrt(x). Strategy:
+        // Find an integer y such that y^2 <= x < (y+1)^2 (for 0 <= x <= 2^n) 
+        // By performing a binary search in the range 0 . . . 2^(n/2) - 1.
+        y = 0
+        for j = n/2 -1 ... 0 do
+            if (y + 2^j)^2 <= x then y = y + 2^j
+        return y
+        */
+        var int y, j, power2j, yplus2j_square;
+        if ( ~( x > 0) ){
+            // negative or 0
+            return 0;
+        }
+        let y = 0;
+        let j = 7;
+        while( j > -1 ){
+            let power2j = Math.power(2, j);
+            let yplus2j_square = Math.power(y + power2j, 2);
+            if( ~( yplus2j_square > x) & (yplus2j_square > 0) ){
+                let y = y + power2j;
+            }
+            let j = j - 1;
+        }
+        return y;
+    }
+
+    function int power(int a, int b){
+        // return a ^ b
+        var int result, count;
+        if ( b = 0 ){
+            return 1;
+        }
+        let result = a;
+        let count = b;
+        while(count > 1){
+            let result = result * a;
+            let count = count - 1;
+        }
+        return result;
     }
 
     /** Returns the greater number. */
     function int max(int a, int b) {
+        if( a > b){
+            return a;
+        }
+        return b;
     }
 
     /** Returns the smaller number. */
     function int min(int a, int b) {
+        if(a < b){
+            return a;
+        }
+        return b;
     }
 }

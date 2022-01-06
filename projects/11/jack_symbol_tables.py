@@ -66,7 +66,7 @@ class SymbolTable:
         return var_count
 
 class ChainedSymbolTable:
-    def __init__(self, debug_info=True) -> None:
+    def __init__(self, debug_info=False) -> None:
         self.tables = [SymbolTable()]
         self.debug_info = debug_info
 

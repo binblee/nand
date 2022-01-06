@@ -25,3 +25,6 @@ if __name__ == '__main__':
             vm_filename = file.replace('.jack', '.vm')
             translator = VM_Translator(parser.get_syntax_tree())
             translator.translate(vm_filename)
+
+# TODO:
+# 1. check type of subroutine (function/method) when it is being invoked.
