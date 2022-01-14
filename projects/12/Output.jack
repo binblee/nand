@@ -17,10 +17,33 @@
 class Output {
 
     // Character map for displaying characters
-    static Array charMaps; 
+    static Array charMaps;
+    static int cursor_i, cursor_j;
+    static int screen_width, screen_height;
+    static int char_width, char_height;
+    static int highbit_mask, lowbit_mask;
+    static int tens_length;
+    static Array tens; 
 
     /** Initializes the screen, and locates the cursor at the screen's top-left. */
     function void init() {
+        do Output.initMap();
+        let screen_width = 64;
+        let screen_height = 23;
+        let char_width = 8;
+        let char_height = 11;
+        let cursor_i = 0;
+        let cursor_j = 0;
+        let highbit_mask = 255; // 0000 0000 1111 1111
+        let lowbit_mask = -256;    // 1111 1111 0000 0000
+        let tens_length = 5;
+        let tens = Array.new(tens_length);
+        let tens[0] = 10000;
+        let tens[1] = 1000;
+        let tens[2] = 100;
+        let tens[3] = 10;
+        let tens[4] = 1;
+        return;
     }
 
     // Initializes the character map array
@@ -71,7 +94,7 @@ class Output {
         do Output.create(64,30,51,51,59,59,59,27,3,30,0,0);  // @
         do Output.create(63,30,51,51,24,12,12,0,12,12,0,0);  // ?
 
-        do Output.create(65,0,0,0,0,0,0,0,0,0,0,0);          // A ** TO BE FILLED **
+        do Output.create(65,12,30,51,51,51,63,51,51,51,0,0); // A ** TO BE FILLED **
         do Output.create(66,31,51,51,51,31,51,51,51,31,0,0); // B
         do Output.create(67,28,54,35,3,3,3,35,54,28,0,0);    // C
         do Output.create(68,15,27,51,51,51,51,51,27,15,0,0); // D
@@ -176,28 +199,156 @@ class Output {
     /** Moves the cursor to the j-th column of the i-th row,
      *  and erases the character displayed there. */
     function void moveCursor(int i, int j) {
+        if ( (i < 0) | ~( i < screen_height) | (j < 0) | ~( j < screen_width)){
+            // do nothing, just return
+            return;
+        }
+        let cursor_i = i;
+        let cursor_j = j;
+        return;
+    }
+
+    function void advanceCursorOneColumn(){
+        var int next_cursor_i, next_cursor_j;
+        let next_cursor_i = cursor_i;
+        let next_cursor_j = cursor_j + 1;
+        if(next_cursor_j = screen_width){
+            let next_cursor_i = next_cursor_i + 1;
+            let next_cursor_j = 0;
+        }
+        if(next_cursor_i = screen_height){
+            let next_cursor_i = 0;
+        }
+        do Output.moveCursor(next_cursor_i, next_cursor_j);
+        return;
+    }
+
+    function void clearCursor(){
+        var int char_row_index, address, low;
+        let address = (cursor_i * 352) + (cursor_j / 2);
+        if ( (cursor_j - ((cursor_j / 2) * 2) ) > 0 ){
+            let low = 0;
+        }else{
+            let low = 1;
+        }
+        let char_row_index = 0;
+        while ( char_row_index < char_height ){
+            do Output.setbit(address, low, 0);
+            let address = address + 32; // row++
+            let char_row_index = char_row_index + 1;
+        }
+        return;
     }
 
     /** Displays the given character at the cursor location,
      *  and advances the cursor one column forward. */
     function void printChar(char c) {
+        var int address, low ;
+        var Array char_map;
+        var int char_row_index;
+        let char_map = Output.getMap(c);
+        let char_row_index = 0;
+        // base_address = (cursor_j * 352) + (cursor_i / 2);
+        // following i, j:
+        // i * 11 * 32 = i * 352
+        // j * 8 / 16 = j / 2
+
+        let address = (cursor_i * 352) + (cursor_j / 2);
+        if ( (cursor_j - ((cursor_j / 2) * 2) ) > 0 ){
+            let low = 0;
+        }else{
+            let low = 1;
+        }
+        while ( char_row_index < char_height ){
+            do Output.setbit(address, low, char_map[char_row_index]);
+            let address = address + 32; // row++
+            let char_row_index = char_row_index + 1;
+        }
+        do Output.advanceCursorOneColumn();
+        return;
+    }
+
+    function void setbit(int address, boolean low, int target_value){
+        var int value;
+        let value = Memory.peek(16384 + address);
+        if( low ){
+            // set low 8 bit of address
+            let value = (value & lowbit_mask) + target_value;
+        }else{
+            // set high 8 bit of address
+            let value = (value & highbit_mask) + (target_value * 256);
+        }
+        do Memory.poke(16384 + address, value);
+        return;
     }
 
     /** displays the given string starting at the cursor location,
      *  and advances the cursor appropriately. */
     function void printString(String s) {
+        var int charIndex, stringLength;
+        var char c;
+        let charIndex = 0; 
+        let stringLength = s.length();
+        while( charIndex < stringLength ){
+            let c = s.charAt(charIndex);
+            do Output.printChar(c);
+            let charIndex = charIndex + 1;
+        }
+        return;
     }
 
     /** Displays the given integer starting at the cursor location,
      *  and advances the cursor appropriately. */
     function void printInt(int i) {
+        var boolean start;
+        var int x, k;
+        if( i < 0 ){
+            do Output.printString("-");
+            let i = Math.abs(i);
+        }
+        if ( i = 0 ){
+            do Output.printString("0");
+            return;
+        }
+        let start = false;
+        let k = 0;
+        while(k < tens_length){
+            let x = i / tens[k];
+            if(x > 0){
+                do Output.printChar(x+48);
+                let start = true;
+            }else{
+                if( (x = 0) & start ){
+                    do Output.printChar(48);
+                }
+            }
+            let i = (i - (x * tens[k]));
+            let k = k+1;
+        }
+        return;
     }
 
     /** Advances the cursor to the beginning of the next line. */
     function void println() {
+        var int next_cursor_i, next_cursor_j;
+        let next_cursor_j = 0;
+        let next_cursor_i = cursor_i+1;
+        if ( next_cursor_i = screen_height ){
+            let next_cursor_i = 0;
+        }
+        do Output.moveCursor(next_cursor_i, next_cursor_j);
+        return;
     }
 
     /** Moves the cursor one column back. */
     function void backSpace() {
+        var int next_cursor_i, next_cursor_j;
+        let next_cursor_j = cursor_j - 1;
+        let next_cursor_i = cursor_i;
+        if ( next_cursor_j < 0 ){
+            let next_cursor_j = 0;
+        }
+        do Output.moveCursor(next_cursor_i, next_cursor_j);
+        return;
     }
 }
