@@ -82,7 +82,7 @@ call String.appendChar 2
 call Output.printString 1
 pop temp 0
 push argument 0
-call Output.printint 1
+call Output.printInt 1
 pop temp 0
 call Output.println 0
 pop temp 0
