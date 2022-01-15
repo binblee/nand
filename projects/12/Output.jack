@@ -311,31 +311,10 @@ class Output {
     /** Displays the given integer starting at the cursor location,
      *  and advances the cursor appropriately. */
     function void printInt(int i) {
-        var boolean start;
-        var int x, k;
-        if( i < 0 ){
-            do Output.printString("-");
-            let i = Math.abs(i);
-        }
-        if ( i = 0 ){
-            do Output.printString("0");
-            return;
-        }
-        let start = false;
-        let k = 0;
-        while(k < tens_length){
-            let x = i / tens[k];
-            if(x > 0){
-                do Output.printChar(x+48);
-                let start = true;
-            }else{
-                if( (x = 0) & start ){
-                    do Output.printChar(48);
-                }
-            }
-            let i = (i - (x * tens[k]));
-            let k = k+1;
-        }
+        var String s;
+        let s = String.new(12);
+        do s.setInt(i);
+        do Output.printString(s);
         return;
     }
 
