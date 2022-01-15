@@ -1657,6 +1657,28 @@ push constant 0
 return
 function Output.printChar 4
 push argument 0
+call String.newLine 0
+eq
+if-goto IF_TRUE0
+goto IF_FALSE0
+label IF_TRUE0
+call Output.println 0
+pop temp 0
+push constant 0
+return
+label IF_FALSE0
+push argument 0
+call String.backSpace 0
+eq
+if-goto IF_TRUE1
+goto IF_FALSE1
+label IF_TRUE1
+call Output.backSpace 0
+pop temp 0
+push constant 0
+return
+label IF_FALSE1
+push argument 0
 call Output.getMap 1
 pop local 2
 push constant 0
@@ -1678,16 +1700,16 @@ call Math.multiply 2
 sub
 push constant 0
 gt
-if-goto IF_TRUE0
-goto IF_FALSE0
-label IF_TRUE0
+if-goto IF_TRUE2
+goto IF_FALSE2
+label IF_TRUE2
 push constant 0
 pop local 1
-goto IF_END0
-label IF_FALSE0
+goto IF_END2
+label IF_FALSE2
 push constant 1
 pop local 1
-label IF_END0
+label IF_END2
 label WHILE_EXP0
 push local 3
 push static 6
@@ -1917,6 +1939,8 @@ label IF_FALSE0
 push local 0
 push local 1
 call Output.moveCursor 2
+pop temp 0
+call Output.clearCursor 0
 pop temp 0
 push constant 0
 return

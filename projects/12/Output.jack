@@ -246,6 +246,17 @@ class Output {
         var int address, low ;
         var Array char_map;
         var int char_row_index;
+
+        if( c = String.newLine() ){
+            do Output.println();
+            return;
+        }
+
+        if( c = String.backSpace() ){
+            do Output.backSpace();
+            return;
+        }
+
         let char_map = Output.getMap(c);
         let char_row_index = 0;
         // base_address = (cursor_j * 352) + (cursor_i / 2);
@@ -349,6 +360,7 @@ class Output {
             let next_cursor_j = 0;
         }
         do Output.moveCursor(next_cursor_i, next_cursor_j);
+        do Output.clearCursor();
         return;
     }
 }
