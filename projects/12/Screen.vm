@@ -551,7 +551,7 @@ goto WHILE_EXP0
 label WHILE_END0
 push constant 0
 return
-function Screen.drawRectangle 2
+function Screen.drawRectangle 3
 push argument 0
 push argument 2
 eq
@@ -585,13 +585,20 @@ label IF_FALSE1
 push argument 2
 push argument 0
 sub
+call Math.abs 1
 pop local 0
 push argument 0
+push argument 2
+call Math.min 2
 pop local 1
+push argument 0
+push argument 2
+call Math.max 2
+pop local 2
 label WHILE_EXP0
 push local 1
-push argument 2
-eq
+push local 2
+gt
 not
 not
 if-goto WHILE_END0
@@ -601,23 +608,10 @@ push local 1
 push argument 3
 call Screen.drawLine 4
 pop temp 0
-push local 0
-push constant 0
-lt
-if-goto IF_TRUE2
-goto IF_FALSE2
-label IF_TRUE2
-push local 1
-push constant 1
-sub
-pop local 1
-goto IF_END2
-label IF_FALSE2
 push local 1
 push constant 1
 add
 pop local 1
-label IF_END2
 goto WHILE_EXP0
 label WHILE_END0
 push constant 0
