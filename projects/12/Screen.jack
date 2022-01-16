@@ -89,7 +89,8 @@ class Screen {
         if (~(x = pixel_cache_x)){
             let pixel_cache_x = x;
             let pixel_cache_x16 = x / 16;
-            let pixel_cache_xdiff = x - (pixel_cache_x16 * 16);
+            // let pixel_cache_xdiff = x - (pixel_cache_x16 * 16);
+            let pixel_cache_xdiff = x & 15;
         }
         if (~(y = pixel_cache_y)){
             let pixel_cache_y = y;

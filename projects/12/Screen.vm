@@ -293,10 +293,8 @@ push constant 16
 call Math.divide 2
 pop static 6
 push argument 0
-push static 6
-push constant 16
-call Math.multiply 2
-sub
+push constant 15
+and
 pop static 7
 label IF_FALSE1
 push argument 1
